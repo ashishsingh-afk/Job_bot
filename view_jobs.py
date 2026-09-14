@@ -5,7 +5,7 @@ import pandas as pd
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
-    'password': '0805',
+    'password': '####',
     'database': 'job_bot'
 }
 
