@@ -7,12 +7,12 @@ import datetime
 import re
 
 # --- CONFIGURATION ---
-TELEGRAM_TOKEN = '8790595848:AAGJlk9xL2RSb_jR-e2Pqj-oEZJH7sGHFsk' 
-TELEGRAM_CHAT_ID = '1271690782'
+TELEGRAM_TOKEN = 'My Telegram Token' 
+TELEGRAM_CHAT_ID = 'My Chat Id of Telegram'
 
-SENDER_EMAIL = 'singh.0805ashish@gmail.com'
-APP_PASSWORD = 'mudbcxihyzwaymkz' 
-RECEIVER_EMAIL = 'singh.0805ashish@gmail.com' 
+SENDER_EMAIL = 'xyz@gmail.com'
+APP_PASSWORD = 'Mailapppassword' 
+RECEIVER_EMAIL = 'xyz@gmail.com' 
 
 SEARCH_QUERIES = [
     "Data Analyst", 
