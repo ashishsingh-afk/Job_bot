@@ -13,17 +13,12 @@ from jobspy import scrape_jobs
 
 load_dotenv()
 
-# =====================================================================
-# CONFIGURATION
-# =====================================================================
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 APP_PASSWORD = os.getenv("APP_PASSWORD")
 RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
-# --- 1. Sources ---
-# A failing source is skipped; it never stops the others.
-# "naukri" needs a recent python-jobspy (pip install -U python-jobspy).
+
 SITES = ["indeed", "linkedin", "glassdoor", "naukri", "google"]
 
 SEARCH_QUERIES = [
@@ -36,22 +31,22 @@ SEARCH_QUERIES = [
 LOCATION = "Noida"
 RESULTS_PER_QUERY = 15
 HOURS_OLD = 48
-PAUSE_BETWEEN_SEARCHES = 3  # seconds, to avoid rate limits
+PAUSE_BETWEEN_SEARCHES = 3  
 
-# --- 4. Location filter ---
+# 4. Location filter 
 TIER1_LOCATIONS = ["noida", "greater noida", "ghaziabad"]
 TIER2_LOCATIONS = ["delhi", "new delhi", "gurgaon", "gurugram", "faridabad"]
 ALLOW_REMOTE = True
-ALLOW_UNKNOWN_LOCATION = True   # jobs with no location listed
-ONLY_TIER1 = False              # True = Noida/Greater Noida/Ghaziabad only
+ALLOW_UNKNOWN_LOCATION = True   
+ONLY_TIER1 = False              
 
-# --- 5. Experience (your range: 0-3 years) ---
-MAX_EXPERIENCE_YEARS = 3   # reject if the job's *minimum* required exp is above this
+# 5. Experience (range: 0-4 years) 
+MAX_EXPERIENCE_YEARS = 4   # reject if the job's *minimum* required exp is above this
 
-# --- 3. Salary ---
-MIN_SALARY_LPA = 0         # 0 = off. Only rejects jobs whose stated max salary is below this.
+#  3. Salary 
+MIN_SALARY_LPA = 4         # 0 = off. Only rejects jobs whose stated max salary is below this.
 
-# --- 2. Relevance ---
+#  2. Relevance 
 MIN_SCORE = 40             # 0-100, raise to get fewer/cleaner alerts
 MAX_ALERTS_PER_RUN = 25
 
@@ -85,10 +80,6 @@ BAD_DESCRIPTION_PHRASES = [
 
 SEEN_FILE = "seen_jobs.txt"
 
-
-# =====================================================================
-# HELPERS
-# =====================================================================
 def safe_str(row, key, default=""):
     v = row.get(key)
     if v is None:
@@ -106,9 +97,7 @@ def has_word(text, words):
     return any(re.search(rf"\b{re.escape(w)}\b", text) for w in words)
 
 
-# =====================================================================
 # 5. EXPERIENCE DETECTION
-# =====================================================================
 RANGE_RE = re.compile(
     r"(\d+(?:\.\d+)?)\s*\+?\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\b"
 )
@@ -123,8 +112,8 @@ def _near_experience(text, start, end):
 def detect_experience(description, experience_range=""):
     """
     Returns (min_years_required or None, label).
-    Understands '0-2 years', '1 to 3 yrs', '2+ years of experience',
-    'minimum 3 years', 'freshers'. Only counts numbers near the word
+    Understands '0-4 years', '1 to 4 yrs', '2+ years of experience',
+    'minimum 2 years', 'freshers'. Only counts numbers near the word
     'experience' so '10 years of company history' is ignored.
     """
     text = (description or "").lower()
@@ -154,13 +143,12 @@ def detect_experience(description, experience_range=""):
     return lo, ("Fresher OK" if lo == 0 else f"{lo:g}+ yrs")
 
 
-# =====================================================================
 # 3. SALARY EXTRACTION
-# =====================================================================
+
 _ANNUAL_FACTOR = {"yearly": 1, "monthly": 12, "weekly": 52, "daily": 260, "hourly": 2080}
 _NUM = r"([\d,]+(?:\.\d+)?)"
 _CUR = r"(?:₹|rs\.?|inr)"
-
+ 
 LPA_RE = re.compile(
     rf"{_CUR}?\s*(\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*"
     r"(?:lpa|l\.p\.a|lakhs?|lacs?)\b"
@@ -173,18 +161,18 @@ ANNUAL_RE = re.compile(
     rf"{_CUR}\s*{_NUM}(?:\s*(?:-|–|to)\s*{_CUR}?\s*{_NUM})?\s*"
     r"(?:/|per|a)?\s*(?:annum|year|yearly|p\.a|pa\b)"
 )
-
-
+ 
+ 
 def _num(s):
     return float(s.replace(",", ""))
-
-
+ 
+ 
 def _fmt_lpa(lo, hi):
     if hi is None or abs(hi - lo) < 0.05:
         return f"₹{lo:.1f} LPA"
     return f"₹{lo:.1f}–{hi:.1f} LPA"
-
-
+ 
+ 
 def extract_salary(row, description):
     """Returns (label, max_lpa or None). Uses structured data first, then the description text."""
     lo, hi = row.get("min_amount"), row.get("max_amount")
@@ -203,16 +191,16 @@ def extract_salary(row, description):
                 return f"{currency} {lo_a:,.0f}–{hi_a:,.0f}/yr", None
     except (TypeError, ValueError):
         pass
-
+ 
     text = (description or "").lower()
-
+ 
     m = LPA_RE.search(text)
     if m:
         lo_l = float(m.group(1))
         hi_l = float(m.group(2)) if m.group(2) else lo_l
         if 0.5 <= lo_l <= 200:
             return _fmt_lpa(lo_l, hi_l), hi_l
-
+ 
     for regex, mult in ((MONTHLY_RE, 12), (ANNUAL_RE, 1)):
         m = regex.search(text)
         if m:
@@ -221,18 +209,15 @@ def extract_salary(row, description):
             lo_l, hi_l = lo_a / 1e5, hi_a / 1e5
             if 0.5 <= lo_l <= 200:
                 return _fmt_lpa(lo_l, hi_l), hi_l
-
+ 
     return "Not disclosed", None
+# 4 Location Filter
 
-
-# =====================================================================
-# 4. LOCATION FILTER
-# =====================================================================
 def check_location(row, title):
     """Returns (allowed, points, label)."""
     loc = safe_str(row, "location").lower()
     is_remote = str(row.get("is_remote")).lower() == "true" or "remote" in loc or "remote" in title
-
+ 
     if any(c in loc for c in TIER1_LOCATIONS):
         return True, 10, "Noida region"
     if not ONLY_TIER1 and any(c in loc for c in TIER2_LOCATIONS):
@@ -243,10 +228,8 @@ def check_location(row, title):
         return True, 2, "Location not listed"
     return False, 0, loc.title()
 
-
-# =====================================================================
 # 2. RELEVANCE SCORING
-# =====================================================================
+
 def score_job(title, description, min_exp, loc_points, has_salary):
     score = max((pts for phrase, pts in TITLE_SCORES.items() if has_word(title, [phrase])), default=0)
 
@@ -271,10 +254,8 @@ def score_job(title, description, min_exp, loc_points, has_salary):
 def score_badge(score):
     return "🔥" if score >= 75 else "⭐" if score >= 60 else "✅"
 
-
-# =====================================================================
 # DEDUPLICATION (Title + Company, so the same job on two sites counts once)
-# =====================================================================
+
 def load_seen():
     if not os.path.exists(SEEN_FILE):
         return set()
@@ -291,10 +272,7 @@ def mark_seen(seen, title, company):
         f.write(job_id + "\n")
     return True
 
-
-# =====================================================================
 # NOTIFICATIONS
-# =====================================================================
 def send_telegram_message(text):
     if not (TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
         print("ERROR: Telegram credentials missing. Check your .env file. Stopping.")
@@ -359,10 +337,7 @@ def send_email_digest(jobs):
     except Exception as ex:
         print(f"Gmail Error: {ex}")
 
-
-# =====================================================================
 # SCRAPING
-# =====================================================================
 def fetch_jobs(site, query):
     kwargs = dict(
         site_name=[site],
