@@ -1,0 +1,7 @@
+venv/
+.venv/
+.idea/
+.env
+seen_jobs.txt
+__pycache__/
+*.pyc
